@@ -42,7 +42,7 @@ namespace SocketUtiles
         }
         public void FetchDataToRead(int length)
         {
-            if (Monitor.TryEnter(DataReceivedLock, TimeSpan.FromMilliseconds(100)))
+            if (Monitor.TryEnter(DataReceivedLock))
             {
                 try
                 {
@@ -54,16 +54,12 @@ namespace SocketUtiles
                     {
                         ReceiveAvaible.Set();
                     }
-                    DataReceived.AddRange(ReceiveBuff);
+                    DataReceived.AddRange(ReceiveBuff.Take(length));
                 }
                 finally
                 {
                     Monitor.Exit(DataReceivedLock);
                 }
-            }
-            else
-            {
-                FetchDataToRead(length);
             }
         }
         public void ReadAllData(int MaxLength)
