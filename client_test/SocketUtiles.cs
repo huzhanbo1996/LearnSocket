@@ -18,8 +18,8 @@ namespace SocketUtiles
         public Socket Socket;
         public IPEndPoint Ep;
         public int ReconnectTimer;
-        private string DataReceived;
-        private string DataToSend;
+        private List<byte> DataReceived = new List<byte>();
+        private List<byte> DataToSend = new List<byte>();
         public byte[] ReceiveBuff = new byte[BuffSize];
         public byte[] SendBuff = new byte[BuffSize];
         public int SendDataLength;
@@ -37,8 +37,6 @@ namespace SocketUtiles
         {
             this.Socket = s;
             this.Ep = Ep;
-            this.DataReceived = "";
-            this.DataToSend = "";
             this.SendDataLength = 0;
             this.ReconnectTimer = ReconnectTimeInit;
         }
@@ -48,15 +46,15 @@ namespace SocketUtiles
             {
                 try
                 {
-                    if (DataReceived.Length > MaxReceivedStrSize)
+                    if (DataReceived.Count > MaxReceivedStrSize)
                     {
                         ReceiveAvaible.Reset();
                     }
-                    if (DataReceived.Length <= MinReceivedStrSize)
+                    if (DataReceived.Count <= MinReceivedStrSize)
                     {
                         ReceiveAvaible.Set();
                     }
-                    DataReceived += Encoding.ASCII.GetString(ReceiveBuff, 0, length);
+                    DataReceived.AddRange(ReceiveBuff);
                 }
                 finally
                 {
@@ -71,14 +69,15 @@ namespace SocketUtiles
         public void ReadAllData(int MaxLength)
         {
         }
-        public string ReadAllData()
+        public byte[] ReadAllData()
         {
             if (Monitor.TryEnter(DataReceivedLock, TimeSpan.FromMilliseconds(100)))
             {
                 try
                 {
-                    string tmp = DataReceived;
-                    DataReceived = "";
+                    byte[] tmp = new byte[DataReceived.Count];
+                    DataReceived.CopyTo(tmp);
+                    DataReceived.Clear();
                     return tmp;
                 }               
                 finally
@@ -88,15 +87,15 @@ namespace SocketUtiles
             }
             else
             {
-                return "";
+                return null;
             }
         }
 
-        public void AddDataToSend(string strToSend)
+        public void AddDataToSend(byte[] bytesToSend)
         {
             if (Monitor.TryEnter(DataSendLock))
             {
-                DataToSend += strToSend;
+                DataToSend.AddRange(bytesToSend);
                 Monitor.Exit(DataSendLock);
             }
             SendBuffAvaible.Set();
@@ -106,8 +105,11 @@ namespace SocketUtiles
             byte[] tmp;
             if (Monitor.TryEnter(DataSendLock))
             {
-                tmp = Encoding.ASCII.GetBytes(DataToSend);
-                DataToSend = DataToSend.Substring(tmp.Length);
+                tmp = new byte[DataToSend.Count];
+                DataToSend.CopyTo(tmp);
+                // possible of error or memory leak
+                DataToSend = new List<byte>(DataToSend.Skip(tmp.Length));
+                //DataToSend.CopyTo(DataToSend, tmp.Length);
                 Monitor.Exit(DataSendLock);
             }
             else
@@ -136,7 +138,7 @@ namespace SocketUtiles
             {
                 SendDataLength -= n;
                 Array.Copy(SendBuff, n, SendBuff, 0, SendDataLength);
-                if (SendDataLength == 0 && DataToSend.Length == 0)
+                if (SendDataLength == 0 && DataToSend.Count == 0)
                 {
                     SendBuffAvaible.Reset();
                 }

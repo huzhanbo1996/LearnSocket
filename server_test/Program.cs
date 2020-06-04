@@ -25,9 +25,11 @@ namespace server_test
                 foreach(var c in server.Skip(1))
                 {
                     Thread.Sleep(1000);
-                    string tmp = c.ReadAllData();
-                    Console.Write(tmp);
-                    c.AddDataToSend("msg: "+ cnt.ToString()+"\n");
+                    byte[] tmp = c.ReadAllData();
+                    //if (tmp.Length == 0) continue;
+                    Console.Write(Encoding.ASCII.GetString(tmp));
+                    Console.Write("Sent: " + "msg: " + cnt.ToString() + "\n");
+                    c.AddDataToSend(Encoding.ASCII.GetBytes("msg: " + cnt.ToString()+"\n"));
                     cnt += 1;
                 }
             }

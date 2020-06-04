@@ -23,11 +23,12 @@ namespace client_test
             
             while (true)
             {
-                string tmp = server.ReadAllData();
-                if (tmp == "") continue;
-                Console.Write(tmp);
-                server.AddDataToSend(tmp + " FROM CLIENT \n");
-                if ( (t - System.DateTime.Now).Minutes>=1  )
+                byte[] tmp = server.ReadAllData();
+                if (tmp.Length == 0) continue;
+                string str = Encoding.ASCII.GetString(tmp);
+                Console.Write(Encoding.ASCII.GetString(tmp));
+                server.AddDataToSend(Encoding.ASCII.GetBytes(str + " FROM CLIENT \n"));
+                if ( (System.DateTime.Now - t).Minutes>=1  )
                 {
                     break;
                 }
